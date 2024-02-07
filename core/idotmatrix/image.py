@@ -114,9 +114,28 @@ class Image:
             with PilImage.open(file_path) as img:
                 # Resize the image
                 if img.size != (pixel_size, pixel_size):
-                    img = img.resize(
-                        (pixel_size, pixel_size), PilImage.Resampling.LANCZOS
-                    )
+                    (w, h) = img.size
+                    # Small images should be padded
+                    if w < pixel_size:
+                        img_ = PilImage.new(img.mode, (pixel_size, h), (0, 0, 0, 0))
+                        img_.paste(img, ((w - pixel_size) // 2, 0))
+                        w = pixel_size
+                        img = img_
+                    if h < pixel_size:
+                        img_ = PilImage.new(img.mode, (w, pixel_size), (0, 0, 0, 0))
+                        img_.paste(img, (0, (h - pixel_size) // 2))
+                        h = pixel_size
+                        img = img_
+                    # If the image is only slightly bigger, just crop.
+                    if w >= pixel_size and h >= pixel_size and w < 2 * pixel_size and h < 2 * pixel_size:
+                        x = (w - pixel_size) / 2
+                        y = (h - pixel_size) / 2
+                        img = img.crop((x, y, x + pixel_size, y + pixel_size))
+                    # Downscale only if it is massive.
+                    else:
+                        img = img.resize(
+                            (pixel_size, pixel_size), PilImage.Resampling.LANCZOS
+                        )
                 # Create a BytesIO object to hold the PNG data
                 png_buffer = io.BytesIO()
                 # Save the resized image as PNG to the BytesIO object
